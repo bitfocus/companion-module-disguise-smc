@@ -40,4 +40,4 @@ For controlling the machine enter the username and password of a valid SMC user.
 
 This module might not (fully) work with older firmware versions.
 
-https://github.com/bitfocus/companion-module-generic-wakeonlan
+https://github.com/bitfocus/companion-module-disguise-smc
