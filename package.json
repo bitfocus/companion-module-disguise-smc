@@ -13,6 +13,7 @@
   "shortname": "SMC",
   "main": "index.js",
   "scripts": {
+    "format": "prettier --write .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -24,5 +25,8 @@
   "bugs": {
     "url": "https://github.com/bitfocus/companion-module-disguise-smc/issues"
   },
-  "homepage": "https://github.com/bitfocus/companion-module-disguise-smc#readme"
+  "homepage": "https://github.com/bitfocus/companion-module-disguise-smc#readme",
+  "devDependencies": {
+    "prettier": "^2.7.1"
+  }
 }
