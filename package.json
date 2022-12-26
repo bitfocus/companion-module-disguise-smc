@@ -1,16 +1,6 @@
 {
   "name": "disguise-smc",
-  "version": "1.0.0",
-  "api_version": "1.0.0",
-  "description": "Disguise System Management Controller ",
-  "keywords": [
-    "Disguise",
-    "Media Server",
-    "D3"
-  ],
-  "manufacturer": "Disguise",
-  "product": "Disguise - SMC",
-  "shortname": "SMC",
+  "version": "2.0.0",
   "main": "index.js",
   "scripts": {
     "format": "prettier --write .",
@@ -18,15 +8,16 @@
   },
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/bitfocus/companion-module-disguise-smc.git"
   },
-  "author": "Jelle van Abbema",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/bitfocus/companion-module-disguise-smc/issues"
-  },
-  "homepage": "https://github.com/bitfocus/companion-module-disguise-smc#readme",
   "devDependencies": {
-    "prettier": "^2.7.1"
-  }
+    "@companion-module/tools": "^0.5.1",
+    "prettier": "^2.8.1"
+  },
+  "dependencies": {
+    "@companion-module/base": "~1.0.1",
+    "request": "^2.88.2"
+  },
+  "prettier": "@companion-module/tools/.prettierrc.json"
 }

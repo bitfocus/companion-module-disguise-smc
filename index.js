@@ -1,14 +1,21 @@
-const instance_skel = require('../../instance_skel')
+const { InstanceBase, Regex, runEntrypoint, combineRgb, InstanceStatus } = require('@companion-module/base')
 const request = require('request')
 
 // Constants
 const pollIntervalMs = 1000
 const timeoutMs = 2000
 
-class instance extends instance_skel {
-	constructor(system, id, config) {
-		super(system, id, config)
+class instance extends InstanceBase {
+	constructor(internal) {
+		super(internal)
+
+		this.updateStatus(InstanceStatus.Disconnected)
+	}
+
+	async init(config, firstInit) {
 		let self = this
+
+		this.config = config
 
 		// Variables
 		self.timer = undefined
@@ -16,26 +23,34 @@ class instance extends instance_skel {
 		self.firstAttempt = true
 		self.timestampOfRequest = Date.now()
 
+		self.createAuth()
+
 		self.initActions()
 		self.initFeedback()
 		self.initPresets()
+		self.initVariables()
 
-		self.status(self.STATUS_UNKNOWN, '')
+		self.startPolling()
 	}
 
-	config_fields() {
+	async destroy() {
 		let self = this
 
+		self.stopPolling()
+		self.debug('destroy', self.id)
+	}
+
+	getConfigFields() {
 		return [
 			{
-				type: 'text',
+				type: 'static-text',
 				id: 'info',
 				width: 12,
 				label: 'Info',
 				value: 'This module is for controlling the System Management Controller of Disguise Hardware.',
 			},
 			{
-				type: 'text',
+				type: 'static-text',
 				id: 'info',
 				width: 12,
 				label: 'Firmware',
@@ -46,10 +61,10 @@ class instance extends instance_skel {
 				id: 'ip',
 				label: 'Target IP',
 				width: 12,
-				regex: self.REGEX_IP,
+				regex: Regex.IP,
 			},
 			{
-				type: 'text',
+				type: 'static-text',
 				id: 'info',
 				width: 12,
 				label: 'Authentication',
@@ -70,20 +85,11 @@ class instance extends instance_skel {
 		]
 	}
 
-	init() {
-		let self = this
+	async configUpdated(config) {
+		this.config = config
 
-		self.createAuth()
-
-		self.initVariables()
-		self.startPolling()
-	}
-
-	destroy() {
-		let self = this
-
-		self.stopPolling()
-		self.debug('destroy', self.id)
+		this.createAuth()
+		this.startPolling()
 	}
 
 	createAuth() {
@@ -99,41 +105,44 @@ class instance extends instance_skel {
 		let actions = {}
 
 		actions['power_on'] = {
-			label: 'Power On',
-			callback: (action, bank) => {
+			name: 'Power On',
+			options: [],
+			callback: (event) => {
 				self.sendPost('/api/chassis/power/on', {})
 			},
 		}
 
 		actions['power_off'] = {
-			label: 'Power Off',
+			name: 'Power Off',
 			options: [
 				{
 					type: 'text',
 					label: 'Note: This will not gracefully shut down the OS',
 				},
 			],
-			callback: (action, bank) => {
+			callback: (event) => {
 				self.sendPost('/api/chassis/power/off', {})
 			},
 		}
 
 		actions['power_cycle'] = {
-			label: 'Power Cycle',
-			callback: (action, bank) => {
+			name: 'Power Cycle',
+			options: [],
+			callback: (event) => {
 				self.sendPost('/api/chassis/power/cycle', {})
 			},
 		}
 
 		actions['who_am_i'] = {
-			label: 'Flash LCD',
-			callback: (action, bank) => {
+			name: 'Flash LCD',
+			options: [],
+			callback: (event) => {
 				self.sendPost('/api/chassis/whoami', {})
 			},
 		}
 
 		actions['notification'] = {
-			label: 'Send a Notification to the LCD',
+			name: 'Send a Notification to the LCD',
 			options: [
 				{
 					type: 'textinput',
@@ -168,8 +177,8 @@ class instance extends instance_skel {
 					required: true,
 				},
 			],
-			callback: (action, bank) => {
-				let opt = action.options
+			callback: (event) => {
+				let opt = event.options
 
 				let timing = {
 					time: opt.duration,
@@ -186,7 +195,7 @@ class instance extends instance_skel {
 		}
 
 		actions['set_strip'] = {
-			label: 'Set LED Strip',
+			name: 'Set LED Strip',
 			options: [
 				{
 					type: 'dropdown',
@@ -230,8 +239,8 @@ class instance extends instance_skel {
 					required: false,
 				},
 			],
-			callback: (action, bank) => {
-				let opt = action.options
+			callback: (event) => {
+				let opt = event.options
 				let object = {
 					ledMode: opt.mode,
 					ledR: opt.red,
@@ -242,7 +251,7 @@ class instance extends instance_skel {
 			},
 		}
 
-		self.setActions(actions)
+		this.setActionDefinitions(actions)
 	}
 
 	initFeedback() {
@@ -251,11 +260,11 @@ class instance extends instance_skel {
 
 		feedbacks['power'] = {
 			type: 'boolean',
-			label: 'Check System Power',
+			name: 'Check System Power',
 			description: 'Checks if the system is powered on (or off).',
-			style: {
-				color: self.rgb(0, 0, 0),
-				bgcolor: self.rgb(0, 255, 0),
+			defaultStyle: {
+				color: combineRgb(0, 0, 0),
+				bgcolor: combineRgb(0, 255, 0),
 			},
 			options: [
 				{
@@ -280,11 +289,11 @@ class instance extends instance_skel {
 
 		feedbacks['power_fault'] = {
 			type: 'boolean',
-			label: 'Check Any Power Fault',
+			name: 'Check Any Power Fault',
 			description: 'Checks the machine for any power fault.',
-			style: {
-				color: self.rgb(0, 0, 0),
-				bgcolor: self.rgb(255, 0, 0),
+			defaultStyle: {
+				color: combineRgb(0, 0, 0),
+				bgcolor: combineRgb(255, 0, 0),
 			},
 			options: [
 				{
@@ -307,158 +316,156 @@ class instance extends instance_skel {
 			},
 		}
 
-		self.setFeedbackDefinitions(feedbacks)
+		this.setFeedbackDefinitions(feedbacks)
 	}
 
 	initVariables() {
-		let self = this
-
 		let variables = [
 			{
-				label: 'Machine Serial',
-				name: 'serial',
+				name: 'Machine Serial',
+				variableId: 'serial',
 			},
 			{
-				label: 'Machine Name',
-				name: 'hostname',
+				name: 'Machine Name',
+				variableId: 'hostname',
 			},
 			{
-				label: 'Machine Type',
-				name: 'type',
+				name: 'Machine Type',
+				variableId: 'type',
 			},
 			{
-				label: 'Machine Role',
-				name: 'role',
+				name: 'Machine Role',
+				variableId: 'role',
 			},
 			{
-				label: 'System Power',
-				name: 'system_power',
+				name: 'System Power',
+				variableId: 'system_power',
 			},
 			{
-				label: 'Power Overload',
-				name: 'power_overload',
+				name: 'Power Overload',
+				variableId: 'power_overload',
 			},
 			{
-				label: 'Main Power Fault',
-				name: 'main_power_fault',
+				name: 'Main Power Fault',
+				variableId: 'main_power_fault',
 			},
 			{
-				label: 'Power Control Fault',
-				name: 'power_control_fault',
+				name: 'Power Control Fault',
+				variableId: 'power_control_fault',
 			},
 			{
-				label: 'LED Strip Mode',
-				name: 'strip_mode',
+				name: 'LED Strip Mode',
+				variableId: 'strip_mode',
 			},
 			{
-				label: 'LED Strip Red',
-				name: 'strip_red',
+				name: 'LED Strip Red',
+				variableId: 'strip_red',
 			},
 			{
-				label: 'LED Strip Green',
-				name: 'strip_green',
+				name: 'LED Strip Green',
+				variableId: 'strip_green',
 			},
 			{
-				label: 'LED Strip Blue',
-				name: 'strip_blue',
+				name: 'LED Strip Blue',
+				variableId: 'strip_blue',
 			},
 		]
 
-		self.setVariableDefinitions(variables)
+		this.setVariableDefinitions(variables)
 	}
 
 	initPresets() {
-		let self = this
-		let presets = []
+		let presets = {}
 
-		presets.push({
+		presets['power_on'] = {
+			type: 'button',
 			category: 'Power',
-			label: 'Power On',
-			bank: {
-				style: 'text',
+			name: 'Power On',
+			style: {
 				text: 'Power On',
 				size: '14',
-				color: self.rgb(255, 255, 255),
-				bgcolor: self.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [
+			steps: [
 				{
-					action: 'power_on',
+					down: [
+						{
+							actionId: 'power_on',
+						},
+					],
+					up: [],
 				},
 			],
 			feedbacks: [
 				{
-					type: 'power_fault',
+					feedbackId: 'power_fault',
 					options: {
 						id: 'on',
 					},
 					style: {
-						color: self.rgb(0, 0, 0),
-						bgcolor: self.rgb(255, 0, 0),
+						color: combineRgb(0, 0, 0),
+						bgcolor: combineRgb(255, 0, 0),
 					},
 				},
 				{
-					type: 'power',
+					feedbackId: 'power',
 					options: {
 						id: 'true',
 					},
 					style: {
-						color: self.rgb(0, 0, 0),
-						bgcolor: self.rgb(0, 255, 0),
+						color: combineRgb(0, 0, 0),
+						bgcolor: combineRgb(0, 255, 0),
 					},
 				},
 			],
-		})
+		}
 
-		presets.push({
+		presets['power_off'] = {
+			type: 'button',
 			category: 'Power',
-			label: 'Power Off',
-			bank: {
-				style: 'text',
+			name: 'Power Off',
+			style: {
 				text: 'Power Off',
 				size: '14',
-				color: self.rgb(255, 0, 0),
-				bgcolor: self.rgb(0, 0, 0),
+				color: combineRgb(255, 0, 0),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [
+			steps: [
 				{
-					action: 'power_on',
+					down: [
+						{
+							actionId: 'power_on',
+						},
+					],
+					up: [],
 				},
 			],
 			feedbacks: [
 				{
-					type: 'power_fault',
+					feedbackId: 'power_fault',
 					options: {
 						id: 'on',
 					},
 					style: {
-						color: self.rgb(0, 0, 0),
-						bgcolor: self.rgb(255, 0, 0),
+						color: combineRgb(0, 0, 0),
+						bgcolor: combineRgb(255, 0, 0),
 					},
 				},
 				{
-					type: 'power',
+					feedbackId: 'power',
 					options: {
 						id: 'true',
 					},
 					style: {
-						color: self.rgb(255, 0, 0),
-						bgcolor: self.rgb(0, 255, 0),
+						color: combineRgb(255, 0, 0),
+						bgcolor: combineRgb(0, 255, 0),
 					},
 				},
 			],
-		})
+		}
 
-		self.setPresetDefinitions(presets)
-	}
-
-	updateConfig(config) {
-		let self = this
-
-		self.config = config
-
-		self.createAuth()
-		self.startPolling()
+		this.setPresetDefinitions(presets)
 	}
 
 	updateVariables(data, path) {
@@ -469,18 +476,18 @@ class instance extends instance_skel {
 		}
 
 		if (path === '/api/localmachine') {
-			self.setVariable('serial', data['serial'])
-			self.setVariable('hostname', data['hostname'])
-			self.setVariable('type', data['type'])
+			self.setVariableValues({ serial: data['serial'], hostname: data['hostname'], type: data['type'] })
 		}
 
 		if (path === '/api/chassis/power/status') {
-			self.setVariable('system_power', data['System Power'])
+			self.setVariableValues({
+				system_power: data['System Power'],
+				power_overload: data['Power Overload'],
+				main_power_fault: data['Main Power Fault'],
+				power_control_fault: data['Power Control Fault'],
+			})
 			self.power = data['System Power']
 			self.checkFeedbacks('power')
-			self.setVariable('power_overload', data['Power Overload'])
-			self.setVariable('main_power_fault', data['Main Power Fault'])
-			self.setVariable('power_control_fault', data['Power Control Fault'])
 			self.powerFault = false
 			if (
 				data['Power Overload'] === true ||
@@ -496,18 +503,21 @@ class instance extends instance_skel {
 		}
 
 		if (path === '/api/session') {
-			self.setVariable('role', data['role'])
+			self.setVariableValues({ role: data['role'] })
 		}
 
 		if (path === '/api/ledstrip') {
-			self.setVariable('strip_mode', data['ledMode'])
-			self.setVariable('strip_red', data['ledR'])
-			self.setVariable('strip_green', data['ledG'])
-			self.setVariable('strip_blue', data['ledB'])
+			self.setVariableValues({
+				strip_mode: data['ledMode'],
+				strip_red: ['ledR'],
+				strip_green: ['ledG'],
+				strip_blue: ['ledB'],
+			})
 		}
 	}
 
 	startPolling = function () {
+		this.log('debug', 'start polling')
 		let self = this
 
 		if (self.timer === undefined) {
@@ -537,7 +547,7 @@ class instance extends instance_skel {
 			if (self.loggedError === false) {
 				let msg = 'IP is not set'
 				self.log('error', msg)
-				self.status(self.STATUS_WARNING, msg)
+				self.updateStatus(InstanceStatus.BadConfig, msg)
 				self.loggedError = true
 			}
 
@@ -575,7 +585,7 @@ class instance extends instance_skel {
 						}
 
 						self.log('error', msg)
-						self.status(self.STATUS_ERROR, msg)
+						self.updateStatus(InstanceStatus.ConnectionFailure, msg)
 						self.loggedError = true
 					}
 					return
@@ -584,7 +594,7 @@ class instance extends instance_skel {
 				// Made a successful request.
 				if (self.loggedError === true || self.firstAttempt) {
 					self.log('info', 'HTTP connection succeeded')
-					self.status(self.STATUS_OK)
+					self.updateStatus(InstanceStatus.Ok)
 					self.loggedError = false
 					self.firstAttempt = false
 				}
@@ -635,7 +645,7 @@ class instance extends instance_skel {
 					}
 
 					self.log('error', msg)
-					self.status(self.STATUS_ERROR, msg)
+					self.updateStatus(InstanceStatus.ConnectionFailure, msg)
 					self.loggedError = true
 				}
 				return
@@ -644,7 +654,7 @@ class instance extends instance_skel {
 			// Made a successful request.
 			if (self.loggedError === true || self.firstAttempt) {
 				self.log('info', 'HTTP connection succeeded')
-				self.status(self.STATUS_OK)
+				self.updateStatus(InstanceStatus.Ok)
 				self.loggedError = false
 				self.firstAttempt = false
 			}
@@ -660,4 +670,4 @@ class instance extends instance_skel {
 	}
 }
 
-exports = module.exports = instance
+runEntrypoint(instance, [])
