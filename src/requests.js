@@ -36,6 +36,7 @@ exports.sendGetRequest = function (patch) {
 			timeout: timeoutMs,
 			headers: {
 				'Content-type': 'application/json',
+				authorization: 'Basic ' + self.config.authorizationBasic,
 			},
 		}
 
@@ -89,6 +90,7 @@ exports.sendPatchRequest = function (data) {
 		url: 'http://' + self.config.ip + '/api/v1/public',
 		headers: {
 			'Content-type': 'application/json',
+			authorization: 'Basic ' + self.config.authorizationBasic,
 		},
 		body: body,
 	}
