@@ -89,9 +89,9 @@ exports.updateVariables = function (data, path) {
 	if (path === '/api/ledstrip') {
 		self.setVariableValues({
 			strip_mode: data['ledMode'],
-			strip_red: ['ledR'],
-			strip_green: ['ledG'],
-			strip_blue: ['ledB'],
+			strip_red: data['ledR'],
+			strip_green: data['ledG'],
+			strip_blue: data['ledB'],
 		})
 	}
 }
