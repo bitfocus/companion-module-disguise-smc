@@ -27,7 +27,7 @@ exports.initPresets = function () {
 			{
 				feedbackId: 'power_fault',
 				options: {
-					id: 'on',
+					state: 'true',
 				},
 				style: {
 					color: combineRgb(0, 0, 0),
@@ -37,7 +37,7 @@ exports.initPresets = function () {
 			{
 				feedbackId: 'power',
 				options: {
-					id: 'true',
+					state: 'on',
 				},
 				style: {
 					color: combineRgb(0, 0, 0),
@@ -61,7 +61,7 @@ exports.initPresets = function () {
 			{
 				down: [
 					{
-						actionId: 'power_on',
+						actionId: 'power_off',
 					},
 				],
 				up: [],
@@ -71,7 +71,7 @@ exports.initPresets = function () {
 			{
 				feedbackId: 'power_fault',
 				options: {
-					id: 'on',
+					state: 'true',
 				},
 				style: {
 					color: combineRgb(0, 0, 0),
@@ -81,7 +81,7 @@ exports.initPresets = function () {
 			{
 				feedbackId: 'power',
 				options: {
-					id: 'true',
+					state: 'on',
 				},
 				style: {
 					color: combineRgb(255, 0, 0),
