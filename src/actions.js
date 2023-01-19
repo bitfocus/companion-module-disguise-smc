@@ -14,7 +14,7 @@ exports.initActions = function () {
 		name: 'Power Off',
 		options: [
 			{
-				type: 'text',
+				type: 'static-text',
 				label: 'Note: This will not gracefully shut down the OS',
 			},
 		],
