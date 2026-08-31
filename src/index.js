@@ -68,9 +68,9 @@ class instance extends InstanceBase {
 			{
 				type: 'textinput',
 				id: 'ip',
-				label: 'Target IP',
+				label: 'Target Device (IP or Hostname)',
 				width: 12,
-				regex: Regex.IP,
+				regex: Regex.HOSTNAME,
 			},
 			{
 				type: 'static-text',
